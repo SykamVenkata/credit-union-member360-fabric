@@ -1,0 +1,32 @@
+name: dbt-build
+
+# Triggered by the Fabric pipeline (BuildGoldWithDbt) after scoring finishes, or by hand.
+on:
+  workflow_dispatch:
+    inputs:
+      run_date:
+        description: Business date being processed
+        required: false
+
+concurrency: dbt-prod
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      FABRIC_SQL_ENDPOINT: ${{ secrets.FABRIC_SQL_ENDPOINT }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: |
+          curl -sSL -O https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb
+          sudo dpkg -i packages-microsoft-prod.deb && sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18
+      - run: pip install "dbt-fabric>=1.8"
+      - run: dbt source freshness --project-dir fabric/dbt --profiles-dir fabric/dbt
+      - run: dbt build --project-dir fabric/dbt --profiles-dir fabric/dbt   # models + tests; stops on a failed test

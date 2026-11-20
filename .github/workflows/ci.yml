@@ -1,0 +1,43 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests scripts data/generators
+      - run: pytest -q
+      - name: Regenerate sample and check it is reproducible
+        run: |
+          python data/generators/generate.py --out /tmp/sample
+          diff -rq data/sample /tmp/sample
+
+  dbt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: sudo apt-get update && sudo apt-get install -y unixodbc
+      - run: pip install "dbt-fabric>=1.8"
+      - name: dbt parse (compiles every model and test without a connection)
+        run: dbt parse --project-dir fabric/dbt --profiles-dir fabric/dbt
+
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run: {working-directory: infra/terraform}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false
+      - run: terraform validate
