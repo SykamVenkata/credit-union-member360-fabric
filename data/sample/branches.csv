@@ -1,0 +1,13 @@
+branch_id,branch_name,region,zip
+B01,Downtown,Bay Area,94105
+B02,Mountain View,Bay Area,94040
+B03,San Jose North,Bay Area,95134
+B04,Fremont,Bay Area,94538
+B05,Portland Pearl,Pacific NW,97209
+B06,Beaverton,Pacific NW,97005
+B07,Hillsboro,Pacific NW,97124
+B08,Redmond,Pacific NW,98052
+B09,Austin Domain,Texas,78758
+B10,Plano,Texas,75024
+B11,Irving,Texas,75039
+B12,Digital Branch,Digital,00000
