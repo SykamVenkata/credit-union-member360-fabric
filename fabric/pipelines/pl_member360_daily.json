@@ -1,0 +1,95 @@
+{
+  "name": "pl_member360_daily",
+  "properties": {
+    "description": "Daily Member 360: land extracts from core banking, insurance and investment systems into OneLake, standardize to Silver, resolve identities, build features and scores, then trigger the dbt build of the Warehouse gold layer.",
+    "parameters": {
+      "run_date": { "type": "string", "defaultValue": "@formatDateTime(adddays(utcNow(), -1), 'yyyy-MM-dd')" }
+    },
+    "activities": [
+      {
+        "name": "LandSourceExtracts",
+        "type": "ForEach",
+        "typeProperties": {
+          "items": { "value": "@createArray('core', 'insurance', 'investments')", "type": "Expression" },
+          "isSequential": false,
+          "activities": [
+            {
+              "name": "CopyExtract",
+              "type": "Copy",
+              "policy": { "retry": 3, "retryIntervalInSeconds": 300, "timeout": "0.02:00:00" },
+              "typeProperties": {
+                "source": {
+                  "type": "DelimitedTextSource",
+                  "storeSettings": {
+                    "type": "SftpReadSettings",
+                    "wildcardFolderPath": { "value": "@concat('outbound/', item())", "type": "Expression" },
+                    "wildcardFileName": "*.csv"
+                  }
+                },
+                "sink": {
+                  "type": "DelimitedTextSink",
+                  "storeSettings": { "type": "LakehouseWriteSettings" }
+                }
+              },
+              "outputs": [{
+                "referenceName": "lh_member360_files",
+                "type": "DatasetReference",
+                "parameters": { "folder": { "value": "@concat('raw/', item(), '/', pipeline().parameters.run_date)", "type": "Expression" } }
+              }]
+            }
+          ]
+        }
+      },
+      {
+        "name": "BronzeToSilver",
+        "type": "TridentNotebook",
+        "dependsOn": [{ "activity": "LandSourceExtracts", "dependencyConditions": ["Succeeded"] }],
+        "typeProperties": {
+          "notebookId": "@pipeline().globalParameters.nb_01_id",
+          "parameters": { "run_date": { "value": "@pipeline().parameters.run_date", "type": "string" } }
+        }
+      },
+      {
+        "name": "IdentityResolution",
+        "type": "TridentNotebook",
+        "dependsOn": [{ "activity": "BronzeToSilver", "dependencyConditions": ["Succeeded"] }],
+        "typeProperties": { "notebookId": "@pipeline().globalParameters.nb_02_id" }
+      },
+      {
+        "name": "Member360AndScoring",
+        "type": "TridentNotebook",
+        "dependsOn": [{ "activity": "IdentityResolution", "dependencyConditions": ["Succeeded"] }],
+        "typeProperties": {
+          "notebookId": "@pipeline().globalParameters.nb_03_id",
+          "parameters": { "as_of": { "value": "@pipeline().parameters.run_date", "type": "string" } }
+        }
+      },
+      {
+        "name": "BuildGoldWithDbt",
+        "type": "WebActivity",
+        "dependsOn": [{ "activity": "Member360AndScoring", "dependencyConditions": ["Succeeded"] }],
+        "typeProperties": {
+          "method": "POST",
+          "url": "https://api.github.com/repos/SykamVenkata/credit-union-member360-fabric/actions/workflows/dbt-build.yml/dispatches",
+          "headers": { "Accept": "application/vnd.github+json" },
+          "body": { "value": "@json(concat('{\"ref\":\"main\",\"inputs\":{\"run_date\":\"', pipeline().parameters.run_date, '\"}}'))", "type": "Expression" },
+          "authentication": { "type": "ServicePrincipal" }
+        }
+      },
+      {
+        "name": "NotifyOnFailure",
+        "type": "Office365Outlook",
+        "dependsOn": [
+          { "activity": "BronzeToSilver", "dependencyConditions": ["Failed"] },
+          { "activity": "IdentityResolution", "dependencyConditions": ["Failed"] },
+          { "activity": "Member360AndScoring", "dependencyConditions": ["Failed"] }
+        ],
+        "typeProperties": {
+          "to": "data-platform@creditunion.example",
+          "subject": "@concat('pl_member360_daily failed for ', pipeline().parameters.run_date)",
+          "body": "@concat('Run ', pipeline().RunId, ' failed. See the pipeline run history in the Member 360 workspace.')"
+        }
+      }
+    ]
+  }
+}

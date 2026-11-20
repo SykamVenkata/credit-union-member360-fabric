@@ -1,0 +1,17 @@
+# Fabric Warehouse via service principal. Values come from GitHub Actions secrets;
+# the defaults only let `dbt parse` run in CI without a connection.
+member360:
+  target: prod
+  outputs:
+    prod:
+      type: fabric
+      driver: "ODBC Driver 18 for SQL Server"
+      server: "{{ env_var('FABRIC_SQL_ENDPOINT', 'example.datawarehouse.fabric.microsoft.com') }}"
+      port: 1433
+      database: wh_member360
+      schema: dbo
+      authentication: ServicePrincipal
+      tenant_id: "{{ env_var('AZURE_TENANT_ID', '00000000-0000-0000-0000-000000000000') }}"
+      client_id: "{{ env_var('AZURE_CLIENT_ID', '00000000-0000-0000-0000-000000000000') }}"
+      client_secret: "{{ env_var('AZURE_CLIENT_SECRET', 'unset') }}"
+      threads: 4

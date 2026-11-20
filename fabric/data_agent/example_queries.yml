@@ -1,0 +1,28 @@
+- question: How many active members hold products in three or more domains?
+  sql: |
+    SELECT COUNT(*) AS members
+    FROM gold.mart_member_360
+    WHERE member_status = 'Active' AND domains_held >= 3;
+
+- question: Which branches have the most deposits at risk?
+  sql: |
+    SELECT TOP 10 b.branch_name, SUM(m.deposit_balance) AS deposits_at_risk
+    FROM gold.mart_member_360 m
+    JOIN gold.dim_branch b ON b.branch_id = m.home_branch_id
+    WHERE m.member_status = 'Active' AND m.churn_risk_band = 'High'
+    GROUP BY b.branch_name
+    ORDER BY deposits_at_risk DESC;
+
+- question: What share of members with a loan also have insurance with us?
+  sql: |
+    SELECT CAST(SUM(CASE WHEN active_policies > 0 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) AS share
+    FROM gold.mart_member_360
+    WHERE member_status = 'Active' AND loan_balance > 0;
+
+- question: What is the most common next best product in the Texas region?
+  sql: |
+    SELECT TOP 1 next_best_product, COUNT(*) AS members
+    FROM gold.mart_member_360
+    WHERE region = 'Texas' AND member_status = 'Active' AND next_best_product IS NOT NULL
+    GROUP BY next_best_product
+    ORDER BY members DESC;

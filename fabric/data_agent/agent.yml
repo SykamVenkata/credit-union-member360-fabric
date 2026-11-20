@@ -1,0 +1,13 @@
+# Fabric data agent: lets staff ask Member 360 questions in plain English.
+# It is limited to certified gold tables, and the instructions below ground its SQL.
+name: member360-agent
+description: Answers questions about members, products, engagement and retention from certified Member 360 data.
+data_sources:
+  - type: warehouse
+    name: wh_member360
+    tables:
+      - gold.mart_member_360
+      - gold.fct_member_product
+      - gold.dim_branch
+instructions_file: instructions.md
+example_queries_file: example_queries.yml

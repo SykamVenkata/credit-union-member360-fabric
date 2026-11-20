@@ -1,0 +1,39 @@
+version: 2
+
+models:
+  - name: dim_member
+    description: Conformed golden member dimension (one row per person, after identity resolution).
+    columns:
+      - name: golden_id
+        tests: [unique, not_null]
+      - name: home_branch_id
+        description: Row-level security key in the semantic model.
+        tests:
+          - not_null
+          - relationships: {to: ref('dim_branch'), field: branch_id}
+      - name: member_status
+        tests:
+          - accepted_values: {values: ["Active", "Closed"]}
+  - name: dim_branch
+    description: Branch dimension with region, used for RLS and branch performance.
+    columns:
+      - name: branch_id
+        tests: [unique, not_null]
+  - name: fct_member_product
+    description: One row per product held by a member across banking, lending, insurance and investments.
+    columns:
+      - name: golden_id
+        tests:
+          - not_null
+          - relationships: {to: ref('dim_member'), field: golden_id}
+      - name: domain
+        tests:
+          - accepted_values: {values: ["Banking", "Lending", "Insurance", "Investments"]}
+  - name: mart_member_360
+    description: Certified Member 360 row with features, churn risk and next best product.
+    columns:
+      - name: golden_id
+        tests: [unique, not_null]
+      - name: churn_risk_band
+        tests:
+          - accepted_values: {values: ["High", "Elevated", "Low"]}

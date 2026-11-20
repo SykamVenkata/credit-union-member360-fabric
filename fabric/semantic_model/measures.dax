@@ -1,0 +1,51 @@
+// Member 360 semantic model (Direct Lake on wh_member360.gold)
+// Tables: mart_member_360 (M), fct_member_product (P), dim_branch (B)
+// Definitions match src/creditunion/kpis.py, which the tests run against sample data.
+
+Members = COUNTROWS ( mart_member_360 )
+
+Active Members =
+CALCULATE ( [Members], mart_member_360[member_status] = "Active" )
+
+Avg Products per Member =
+DIVIDE ( SUM ( mart_member_360[total_products] ), [Members] )
+
+Multi-Domain Share % =
+DIVIDE ( CALCULATE ( [Members], mart_member_360[domains_held] >= 2 ), [Members] )
+
+Digital Adoption % =
+DIVIDE ( CALCULATE ( [Members], mart_member_360[digital_active] = 1 ), [Members] )
+
+Total Deposits = SUM ( mart_member_360[deposit_balance] )
+
+Total Loans = SUM ( mart_member_360[loan_balance] )
+
+Delinquency Rate 30+ % =
+DIVIDE (
+    CALCULATE ( [Total Loans], mart_member_360[max_days_past_due] >= 30 ),
+    [Total Loans]
+)
+
+Annual Premium = SUM ( mart_member_360[annual_premium] )
+
+Insurance Loss Ratio % =
+// claims paid in the last 12 months over annual premium in force
+DIVIDE ( SUM ( mart_member_360[claims_paid_12m] ), [Annual Premium] )
+
+Assets Under Management = SUM ( mart_member_360[aum] )
+
+Churn Rate 90d % =
+DIVIDE ( CALCULATE ( [Members], mart_member_360[member_status] = "Closed" ), [Members] )
+
+High Churn Risk Members =
+CALCULATE ( [Members], mart_member_360[churn_risk_band] = "High", mart_member_360[member_status] = "Active" )
+
+Deposits at Risk =
+CALCULATE ( [Total Deposits], mart_member_360[churn_risk_band] = "High", mart_member_360[member_status] = "Active" )
+
+Annual Value at Risk =
+CALCULATE (
+    SUM ( mart_member_360[lifetime_value_annual] ),
+    mart_member_360[churn_risk_band] = "High",
+    mart_member_360[member_status] = "Active"
+)

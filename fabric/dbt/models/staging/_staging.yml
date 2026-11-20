@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: stg_members
+    description: Core member records with the golden id from identity resolution.
+    columns:
+      - name: member_id
+        tests: [unique, not_null]
+      - name: golden_id
+        tests: [not_null]
+      - name: segment
+        tests:
+          - accepted_values: {values: ["Standard", "Premier", "Startup"]}
+  - name: stg_deposit_accounts
+    description: Deposit accounts (checking, savings, money market, certificates, IRA) per golden member.
+    columns:
+      - name: account_id
+        tests: [unique, not_null]
+      - name: golden_id
+        tests: [not_null]
+  - name: stg_loans
+    description: Loans per golden member with a standard delinquency bucket.
+    columns:
+      - name: loan_id
+        tests: [unique, not_null]
+      - name: delinquency_bucket
+        tests:
+          - accepted_values: {values: ["Current", "1-29 DPD", "30-59 DPD", "60-89 DPD", "90+ DPD"]}
+  - name: stg_policies
+    description: Insurance policies with claim totals, keyed to golden members or prospects.
+    columns:
+      - name: policy_id
+        tests: [unique, not_null]
+  - name: stg_investment_accounts
+    description: Investment accounts (advisor and robo) keyed to golden members or prospects.
+    columns:
+      - name: account_id
+        tests: [unique, not_null]
+  - name: stg_member_scores
+    description: Latest churn propensity and next-best-product scores from the ML notebook.
+    columns:
+      - name: golden_id
+        tests: [unique, not_null]

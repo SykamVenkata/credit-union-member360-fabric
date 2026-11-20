@@ -1,0 +1,27 @@
+version: 2
+
+sources:
+  - name: lakehouse
+    description: Silver Delta tables in Lakehouse lh_member360, read through its SQL analytics endpoint.
+    database: lh_member360
+    schema: silver
+    freshness:
+      warn_after: {count: 26, period: hour}
+      error_after: {count: 48, period: hour}
+    loaded_at_field: _run_date
+    tables:
+      - name: core_members
+      - name: deposit_accounts
+      - name: loans
+      - name: branches
+      - name: ins_policies
+      - name: ins_claims
+      - name: inv_accounts
+      - name: member_identity_map
+        loaded_at_field: null
+        freshness: null
+      - name: member_features
+        loaded_at_field: null
+        freshness: null
+      - name: member_scores
+        loaded_at_field: scored_at
